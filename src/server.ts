@@ -379,11 +379,19 @@ class MicrosoftGraphServer {
         })
       );
 
+      const apiKeyOrMicrosoftAuthMiddleware = (req: Request, res: Response, next: Function): void => {
+        const apiKey = process.env.MS365_MCP_API_KEY;
+        if (apiKey && req.headers.authorization === 'Bearer ' + apiKey) {
+          return next();
+        }
+        microsoftBearerTokenAuthMiddleware(req, res, next);
+      };
+
       // Microsoft Graph MCP endpoints with bearer token auth
       // Handle both GET and POST methods as required by MCP Streamable HTTP specification
       app.get(
         '/mcp',
-        microsoftBearerTokenAuthMiddleware,
+        apiKeyOrMicrosoftAuthMiddleware,
         async (
           req: Request & { microsoftAuth?: { accessToken: string; refreshToken: string } },
           res: Response
@@ -432,7 +440,7 @@ class MicrosoftGraphServer {
 
       app.post(
         '/mcp',
-        microsoftBearerTokenAuthMiddleware,
+        apiKeyOrMicrosoftAuthMiddleware,
         async (
           req: Request & { microsoftAuth?: { accessToken: string; refreshToken: string } },
           res: Response
