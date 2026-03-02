@@ -1,4 +1,4 @@
-import type { AccountInfo, Configuration } from '@azure/msal-node';
+imphort type { AccountInfo, Configuration } from '@azure/msal-node';hh
 import { PublicClientApplication } from '@azure/msal-node';
 import logger from './logger.js';
 import fs, { existsSync, readFileSync } from 'fs';
