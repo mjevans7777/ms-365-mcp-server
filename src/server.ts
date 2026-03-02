@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import logger, { enableConsoleLogging } from './logger.js';
 import { registerAuthTools } from './auth-tools.js';
 import { registerGraphTools, registerDiscoveryTools } from './graph-tools.js';
@@ -379,7 +379,7 @@ class MicrosoftGraphServer {
         })
       );
 
-      const apiKeyOrMicrosoftAuthMiddleware = (req: Request, res: Response, next: Function): void => {
+      const apiKeyOrMicrosoftAuthMiddleware = (req: Request, res: Response, next: NextFunction): void => {
         const apiKey = process.env.MS365_MCP_API_KEY;
         if (apiKey && req.headers.authorization === 'Bearer ' + apiKey) {
           return next();
