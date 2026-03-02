@@ -182,6 +182,8 @@ class AuthManager {
   private oauthToken: string | null;
   private isOAuthMode: boolean;
   private selectedAccountId: string | null;
+  private _refreshToken: string | null;
+  private _oauthTokenExpiry: number | null;
 
   constructor(config: Configuration, scopes: string[] = buildScopesFromEndpoints()) {
     logger.info(`And scopes are ${scopes.join(', ')}`, scopes);
@@ -195,12 +197,49 @@ class AuthManager {
     const oauthTokenFromEnv = process.env.MS365_MCP_OAUTH_TOKEN;
     this.oauthToken = oauthTokenFromEnv ?? null;
     this.isOAuthMode = oauthTokenFromEnv != null;
+    this._refreshToken = process.env.MS365_REFRESH_TOKEN ?? null;
+    this._oauthTokenExpiry = null;
+    if (this._refreshToken && !this.oauthToken) {
+      this.isOAuthMode = true;
+    }
   }
 
   /**
    * Creates an AuthManager instance with secrets loaded from the configured provider.
    * Uses Key Vault if MS365_MCP_KEYVAULT_URL is set, otherwise environment variables.
    */
+  
+  private async _refreshAccessToken(): Promise<void> {
+    if (!this._refreshToken) return;
+    try {
+      const secrets = await getSecrets();
+      const tenantId = secrets.tenantId || 'common';
+      const clientId = secrets.clientId || getDefaultClientId(secrets.cloudType);
+      const clientSecret = process.env.MS365_MCP_CLIENT_SECRET || '';
+      const params = new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: this._refreshToken,
+        client_id: clientId,
+        client_secret: clientSecret,
+        scope: 'https://graph.microsoft.com/.default offline_access',
+      });
+      const response = await fetch(
+        `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
+        { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() }
+      );
+      if (!response.ok) { const text = await response.text(); logger.error(`Refresh token exchange failed: ${response.status} - ${text}`); return; }
+      const data = (await response.json()) as { access_token: string; refresh_token?: string; expires_in?: number; };
+      this.oauthToken = data.access_token;
+      this.isOAuthMode = true;
+      this._oauthTokenExpiry = Date.now() + (data.expires_in ?? 3600) * 1000;
+      if (data.refresh_token) { this._refreshToken = data.refresh_token; }
+      logger.info('Successfully refreshed access token using refresh token');
+    } catch (error) {
+      logger.error(`Error refreshing access token: ${(error as Error).message}`);
+    }
+  }
+
+
   static async create(scopes: string[] = buildScopesFromEndpoints()): Promise<AuthManager> {
     const secrets = await getSecrets();
     const config = createMsalConfig(secrets);
@@ -334,6 +373,9 @@ class AuthManager {
   }
 
   async getToken(forceRefresh = false): Promise<string | null> {
+    if (this._refreshToken && (!this.oauthToken || forceRefresh || (this._oauthTokenExpiry !== null && Date.now() > this._oauthTokenExpiry - 300000))) {
+      await this._refreshAccessToken();
+    }
     if (this.isOAuthMode && this.oauthToken) {
       return this.oauthToken;
     }
