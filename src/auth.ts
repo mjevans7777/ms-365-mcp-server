@@ -206,7 +206,11 @@ class AuthManager {
       this.isOAuthMode = true;
     }
   }
-
+    if (this._refreshToken && !this.oauthToken) {
+      this.isOAuthMode = true;
+    }
+  }
+    
   /**
    * Creates an AuthManager instance with secrets loaded from the configured provider.
    * Uses Key Vault if MS365_MCP_KEYVAULT_URL is set, otherwise environment variables.
