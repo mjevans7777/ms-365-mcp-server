@@ -197,15 +197,15 @@ class AuthManager {
     const oauthTokenFromEnv = process.env.MS365_MCP_OAUTH_TOKEN;
     this.oauthToken = oauthTokenFromEnv ?? null;
     this.isOAuthMode = oauthTokenFromEnv != null;
-    this._refreshToken = process.env.MS365_REFRESH_TOKEN ?? null;
+    this._refreshToken = null;
     this._oauthTokenExpiry = null;
-    if (!this._refreshToken) {
+    // Try disk first (most up-to-date after rotation)
     const _pp = process.env.MS365_TOKEN_PERSIST_PATH || '/data/refresh_token.txt';
     try { if (fs.existsSync(_pp)) { const _pt = fs.readFileSync(_pp, 'utf8').trim(); if (_pt) { this._refreshToken = _pt; logger.info('Loaded persisted refresh token from disk'); } } } catch (_e) {}
-    if (this._refreshToken && !this.oauthToken) {
-      this.isOAuthMode = true;
+    // Fall back to env var as seed if disk has nothing
+    if (!this._refreshToken) {
+      this._refreshToken = process.env.MS365_REFRESH_TOKEN ?? null;
     }
-  }
     if (this._refreshToken && !this.oauthToken) {
       this.isOAuthMode = true;
     }
