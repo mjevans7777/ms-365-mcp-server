@@ -673,6 +673,9 @@ class AuthManager {
    * @returns The access token string.
    */
   async getTokenForAccount(identifier?: string): Promise<string> {
+    if (this._refreshToken && (!this.oauthToken || (this._oauthTokenExpiry !== null && Date.now() > this._oauthTokenExpiry - 300000))) {
+      await this._refreshAccessToken();
+    }
     if (this.isOAuthMode && this.oauthToken) {
       return this.oauthToken;
     }
