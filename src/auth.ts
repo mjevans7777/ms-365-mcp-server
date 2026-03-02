@@ -199,6 +199,8 @@ class AuthManager {
     this.isOAuthMode = oauthTokenFromEnv != null;
     this._refreshToken = process.env.MS365_REFRESH_TOKEN ?? null;
     this._oauthTokenExpiry = null;
+    const _pp = process.env.MS365_TOKEN_PERSIST_PATH || '/data/refresh_token.txt';
+    try { if (fs.existsSync(_pp)) { const _pt = fs.readFileSync(_pp, 'utf8').trim(); if (_pt) { this._refreshToken = _pt; logger.info('Loaded persisted refresh token from disk'); } } } catch (_e) {}
     if (this._refreshToken && !this.oauthToken) {
       this.isOAuthMode = true;
     }
@@ -232,7 +234,7 @@ class AuthManager {
       this.oauthToken = data.access_token;
       this.isOAuthMode = true;
       this._oauthTokenExpiry = Date.now() + (data.expires_in ?? 3600) * 1000;
-      if (data.refresh_token) { this._refreshToken = data.refresh_token; }
+    if (data.refresh_token) { this._refreshToken = data.refresh_token; const _pp2 = process.env.MS365_TOKEN_PERSIST_PATH || '/data/refresh_token.txt'; try { fs.writeFileSync(_pp2, this._refreshToken, { mode: 0o600 }); } catch (_e2) {} }
       logger.info('Successfully refreshed access token using refresh token');
     } catch (error) {
       logger.error(`Error refreshing access token: ${(error as Error).message}`);
