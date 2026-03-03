@@ -7,6 +7,14 @@ import AuthManager, { buildScopesFromEndpoints } from './auth.js';
 import MicrosoftGraphServer from './server.js';
 import { version } from './version.js';
 
+// Prevent unhandled promise rejections from crashing the server.
+// Node.js 15+ fatally exits on unhandled rejections by default.
+// Auth failures (e.g. expired/missing tokens) should return errors
+// to the client, not kill the process.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled rejection (server kept alive):', reason);
+});
+
 async function main(): Promise<void> {
   try {
     const args = parseArgs();
